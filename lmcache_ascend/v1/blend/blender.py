@@ -49,6 +49,21 @@ class LMCBlender:
             positions=None,
         )
 
+    def _get_recomp_ratio(self, layer_id: int) -> float:
+        """Return the recomputation ratio for ``layer_id``.
+
+        ``recomp_ratios`` is PARALLEL to ``check_layers`` (see
+        LMCBlendCommonMetadata, tests/v1/blend/test_blend.py):
+        ``recomp_ratios[i]`` corresponds to ``check_layers[i]``, NOT to
+        ``layer_id`` directly. The caller guarantees ``layer_id in
+        check_layers``, so ``check_layers.index(layer_id)`` never raises.
+        """
+        ratios = self.common_metadata.recomp_ratios
+        if not ratios:
+            return 0.0
+        idx = self.common_metadata.check_layers.index(layer_id)
+        return ratios[idx] if idx < len(ratios) else ratios[0]
+
     def process_qkv(
         self,
         q: torch.Tensor,
@@ -90,10 +105,10 @@ class LMCBlender:
         else:
             q, k = attn_layer.rotary_emb(self.metadata.positions, q, k)
 
-        if (
-            layer_id in self.common_metadata.check_layers
-            and self.common_metadata.recomp_ratios[0] > 0
-        ):
+        recomp_ratio = 0.0
+        if layer_id in self.common_metadata.check_layers:
+            recomp_ratio = self._get_recomp_ratio(layer_id)
+        if recomp_ratio > 0:
             assert k[num_falses:].shape[0] == old_k.shape[0], (
                 "Mismatch between number of tokens in k "
                 "(after skipping falses) and old_k"
@@ -106,8 +121,7 @@ class LMCBlender:
 
             total_len = diff_k.shape[0]
 
-            # TODO(Jiayi): remove `[0]` hardcode
-            topk_num = int(total_len * self.common_metadata.recomp_ratios[0])
+            topk_num = int(total_len * recomp_ratio)
             topk_num = max(topk_num, 1)
 
             top_indices = torch.topk(diff_k, k=topk_num).indices
