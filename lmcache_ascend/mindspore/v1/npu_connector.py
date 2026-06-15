@@ -267,10 +267,6 @@ class VLLMPagedMemNPUConnectorV2(VLLMPagedMemGPUConnectorV2):
 
         slot_mapping: torch.Tensor = kwargs["slot_mapping"]
 
-        kv_cache_pointers = self._initialize_pointers(self.kvcaches)
-        if self.kv_format == KVCacheFormat.UNDEFINED:
-            raise ValueError("KV cache format is not initialized!")
-
         def _data_transfer():
             use_tmp_buf = self.is_310p or (
                 self.gpu_buffer is not None
@@ -309,16 +305,17 @@ class VLLMPagedMemNPUConnectorV2(VLLMPagedMemGPUConnectorV2):
                 np.copyto(memory_obj.tensor, target_buffer.cpu().numpy())
 
         if self.is_310p:
+            kv_cache_pointers = self._initialize_pointers(self.kvcaches)
+            if self.kv_format == KVCacheFormat.UNDEFINED:
+                raise ValueError("KV cache format is not initialized!")
             _data_transfer()
             torch.cuda.synchronize()
         else:
             with torch.cuda.stream(self.store_stream):
+                kv_cache_pointers = self._initialize_pointers(self.kvcaches)
+                if self.kv_format == KVCacheFormat.UNDEFINED:
+                    raise ValueError("KV cache format is not initialized!")
                 _data_transfer()
-
-            # if not memory_obj.tensor.is_cuda:
-            #     Force a synchronize if the target buffer is NOT CUDA device
-            #     NOTE: for better performance, we may not want to sync for every
-            #     memory object
             self.store_stream.synchronize()
 
         if self.use_mla:
