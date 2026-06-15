@@ -524,7 +524,7 @@ class VLLMPagedMemNPUConnectorV2(VLLMPagedMemGPUConnectorV2):
 
             self.kv_cache_pointers = torch.empty(
                 self.num_layers * self.kv_size, dtype=torch.int64, device="cpu"
-            )
+            ).pin_memory()
         elif self.kv_format == KVCacheFormat.MLA_KV:
             for k_cache, v_cache in kv_caches:
                 pointers_list.append(k_cache.data_ptr())
@@ -532,7 +532,7 @@ class VLLMPagedMemNPUConnectorV2(VLLMPagedMemGPUConnectorV2):
 
             self.kv_cache_pointers = torch.empty(
                 self.num_layers * self.kv_size, dtype=torch.int64, device="cpu"
-            )
+            ).pin_memory()
         elif self.kv_format == KVCacheFormat.SEPARATE_KV:
             self.kv_size = 2
             pointers_list = []
@@ -542,14 +542,14 @@ class VLLMPagedMemNPUConnectorV2(VLLMPagedMemGPUConnectorV2):
 
             self.kv_cache_pointers = torch.empty(
                 self.num_layers * self.kv_size, dtype=torch.int64, device="cpu"
-            )
+            ).pin_memory()
         else:
             self.kv_size = 1
             pointers_list = [t.data_ptr() for t in kv_caches]
 
             self.kv_cache_pointers = torch.empty(
                 self.num_layers, dtype=torch.int64, device="cpu"
-            )
+            ).pin_memory()
 
         self.kv_cache_pointers.numpy()[:] = pointers_list
 
@@ -557,7 +557,7 @@ class VLLMPagedMemNPUConnectorV2(VLLMPagedMemGPUConnectorV2):
             self.kv_cache_pointers.shape, dtype=torch.int64, device=self.kvcaches_device
         )
 
-        self.kv_cache_pointers_on_gpu[idx].copy_(self.kv_cache_pointers)
+        self.kv_cache_pointers_on_gpu[idx].copy_(self.kv_cache_pointers, non_blocking=True)
 
         first_tensor = (
             kv_caches[0][0] if self.kv_format.is_tuple_format() else kv_caches[0]
