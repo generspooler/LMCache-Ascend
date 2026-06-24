@@ -133,7 +133,9 @@ class VLLMPagedMemNPUConnectorV2(VLLMPagedMemGPUConnectorV2):
             self.kv_cache_pointers.shape, dtype=torch.int64, device=self.kvcaches_device
         )
 
-        self.kv_cache_pointers_on_gpu[idx].copy_(self.kv_cache_pointers, non_blocking=True)
+        self.kv_cache_pointers_on_gpu[idx].copy_(
+            self.kv_cache_pointers, non_blocking=True
+        )
 
         first_tensor = (
             kv_caches[0][0] if self.kv_format.is_separate_format() else kv_caches[0]
