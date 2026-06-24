@@ -35,10 +35,28 @@ class LMCBlender:
         # TODO: remove this hardcode
         self.num_layers = len(vllm_model.model.layers)
 
-        # TODO (Jiayi): make this less hard-coded
+        check_layers: list[int] = config.blend_check_layers or []
+        if not check_layers and config.enable_blending:
+            logger.warning(
+                "Blending is enabled but blend_check_layers is empty or "
+                "unset; no recomputation check will be performed."
+            )
+
+        recomp_ratios = config.blend_recompute_ratios
+        if recomp_ratios:
+            n_ratios = len(recomp_ratios)
+            n_check = len(check_layers)
+            if n_check and n_ratios not in (1, n_check):
+                raise ValueError(
+                    f"Mismatched blend_recompute_ratios length: expected 1 "
+                    f"(broadcast) or {n_check} (one per check layer), got "
+                    f"{n_ratios}. check_layers={check_layers}, "
+                    f"recomp_ratios={recomp_ratios}"
+                )
+
         self.common_metadata = LMCBlendCommonMetadata(
-            check_layers=config.blend_check_layers,
-            recomp_ratios=config.blend_recompute_ratios,
+            check_layers=check_layers,
+            recomp_ratios=recomp_ratios,
             thresholds=config.blend_thresholds,
         )
 
@@ -52,16 +70,27 @@ class LMCBlender:
     def _get_recomp_ratio(self, layer_id: int) -> float:
         """Return the recomputation ratio for ``layer_id``.
 
-        ``recomp_ratios`` is PARALLEL to ``check_layers`` (see
-        LMCBlendCommonMetadata, tests/v1/blend/test_blend.py):
-        ``recomp_ratios[i]`` corresponds to ``check_layers[i]``, NOT to
-        ``layer_id`` directly. The caller guarantees ``layer_id in
-        check_layers``, so ``check_layers.index(layer_id)`` never raises.
+        Two modes are supported:
+
+        1. **Parallel** — ``recomp_ratios`` has the same length as
+           ``check_layers``; ``recomp_ratios[i]`` corresponds to
+           ``check_layers[i]``, NOT to ``layer_id`` directly.
+
+        2. **Broadcast** — ``recomp_ratios`` has a single element
+           shared by every layer in ``check_layers``.
+
+        The caller guarantees ``layer_id in check_layers``, so
+        ``check_layers.index(layer_id)`` never raises.
+
+        Returns 0.0 when ``recomp_ratios`` is None or empty, meaning
+        no recomputation is applied.
         """
         ratios = self.common_metadata.recomp_ratios
         if not ratios:
             return 0.0
         idx = self.common_metadata.check_layers.index(layer_id)
+        # Fallback to the first ratio when a single ratio broadcasts
+        # across multiple check layers.
         return ratios[idx] if idx < len(ratios) else ratios[0]
 
     def process_qkv(
