@@ -211,9 +211,17 @@ docker exec -d {container} bash -c "
     > /path/to/logs/vllm.log 2>&1 &
 "
 
-# 3. 等待就绪（轮询 /health）
+# 3. 等待就绪（轮询 /health，最多等待 60 秒）
+TIMEOUT=60
+INTERVAL=5
+ELAPSED=0
 while ! curl -s -o /dev/null -w '%{http_code}' http://localhost:7100/health | grep -q 200; do
-  sleep 5
+  if [ $ELAPSED -ge $TIMEOUT ]; then
+    echo "ERROR: Server failed to start within $TIMEOUT seconds"
+    exit 1
+  fi
+  sleep $INTERVAL
+  ELAPSED=$((ELAPSED + INTERVAL))
 done
 
 # 4. 发送测试请求
