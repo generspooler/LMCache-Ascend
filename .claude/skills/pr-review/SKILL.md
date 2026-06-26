@@ -402,7 +402,7 @@ func TestSend_AfterCleanupReturnsError(t *testing.T) {
 ```bash
 # 通过 gh CLI 提交 review（需要用户确认）
 gh pr review {num} \
-  --request  \  # 或 --approve / --comment
+  --request-changes \
   --body-file output/pr_{num}_review.md
 
 # 或仅提交单条 inline comment
