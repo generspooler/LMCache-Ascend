@@ -315,7 +315,7 @@ class VLLMPagedMemNPUConnectorV2(VLLMPagedMemGPUConnectorV2):
             with torch.cuda.stream(self.store_stream):
                 _data_transfer()
 
-             # if not memory_obj.tensor.is_cuda:
+            # if not memory_obj.tensor.is_cuda:
             #     Force a synchronize if the target buffer is NOT CUDA device
             #     NOTE: for better performance, we may not want to sync for every
             #     memory object
