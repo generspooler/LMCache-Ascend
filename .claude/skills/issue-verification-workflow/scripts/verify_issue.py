@@ -20,6 +20,7 @@ from pathlib import Path
 # Try to import torch for performance tests (optional)
 try:
     import torch
+    import torch_npu
     HAS_TORCH = True
 except ImportError:
     HAS_TORCH = False
