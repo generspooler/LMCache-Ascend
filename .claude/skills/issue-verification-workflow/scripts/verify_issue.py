@@ -6,10 +6,10 @@ Utility that automates source-level verification of issue fixes.
 Run on the target environment (local or container).
 
 Usage:
-    python3 verify_issue.py --issue-type pin_memory --file npu_connector/npu_connectors.py
-    python3 verify_issue.py --issue-type offload_time  --file v1/cache_engine.py
-    python3 verify_issue.py --issue-type dead_code     --file v1/storage_backend/p2p_backend.py --pattern local_lookup_cache
-    python3 verify_issue.py --issue-type index_fix     --file v1/blend/blender.py --bad-pattern "recomp_ratios[0]"
+    python3 verify_issue.py --issue-type pin_memory --file lmcache_ascend/v1/npu_connector/npu_connectors.py
+    python3 verify_issue.py --issue-type offload_time  --file lmcache_ascend/v1/cache_engine.py
+    python3 verify_issue.py --issue-type dead_code     --file lmcache_ascend/v1/storage_backend/p2p_backend.py --pattern local_lookup_cache
+    python3 verify_issue.py --issue-type index_fix     --file lmcache_ascend/v1/blend/blender.py --bad-pattern "recomp_ratios[0]"
 """
 
 import argparse
